@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,6 +22,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -31,6 +33,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
@@ -48,6 +51,7 @@ fun PantallaTareas(vm: TareasViewModel) {
     val corriendo by vm.corriendo.collectAsState()
     val primos by vm.primos.collectAsState()
     val carga by vm.carga.collectAsState()
+    val simularError by vm.simularError.collectAsState()
     // Texto del campo numérico (por defecto 500 000; ajústalo para que tarde 2-5 s)
     var textoN by rememberSaveable { mutableStateOf("500000") }
     // Contador de toques: la "prueba de vida" de la pantalla
@@ -160,14 +164,21 @@ fun PantallaTareas(vm: TareasViewModel) {
                         Text("A la vez")
                     }
                 }
-                // TODO Paso 7: interruptor Simular error y Reintentar
+                // Paso 7: interruptor Simular error
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(
+                        checked = simularError,
+                        onCheckedChange = { vm.cambiarSimularError(it) }
+                    )
+                    Text("  Simular error")
+                }
                 when (val c = carga) {
                     CargaUi.Inicial -> Text("Elige cómo cargar los datos")
                     CargaUi.Cargando -> CircularProgressIndicator()
                     is CargaUi.Exito -> RecuadroVerde(
                         "Modo: ${c.modo}\nPerfil: ${c.perfil}\nPedidos: ${c.pedidos}\nTiempo: ${c.milisegundos} ms"
                     )
-                    is CargaUi.Error -> Text(c.mensaje) // Paso 7: recuadro de error
+                    is CargaUi.Error -> RecuadroError(c.mensaje) { vm.reintentar() }
                 }
             }
         }
@@ -204,4 +215,27 @@ private fun RecuadroVerde(texto: String) {
             .background(Color(0xFFC8E6C9), RoundedCornerShape(8.dp))
             .padding(12.dp)
     )
+}
+
+// Paso 7: recuadro con color de error, el mensaje y el botón Reintentar
+@Composable
+private fun RecuadroError(mensaje: String, onReintentar: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(mensaje, color = MaterialTheme.colorScheme.onErrorContainer)
+        Button(
+            onClick = onReintentar,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError
+            )
+        ) {
+            Text("Reintentar")
+        }
+    }
 }
