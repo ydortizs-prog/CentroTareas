@@ -62,6 +62,7 @@ fun PantallaTareas(vm: TareasViewModel) {
     val progresoPrimos by vm.progresoPrimos.collectAsState()
     val carga by vm.carga.collectAsState()
     val simularError by vm.simularError.collectAsState()
+    val tiempoMaximo by vm.tiempoMaximo.collectAsState()
     // Texto del campo numérico (500 000 tardaba ~600 ms en este emulador; se ajusta para que tarde 2-5 s)
     var textoN by rememberSaveable { mutableStateOf("1500000") }
     // Contador de toques: la "prueba de vida" de la pantalla
@@ -183,6 +184,14 @@ fun PantallaTareas(vm: TareasViewModel) {
                         onCheckedChange = { vm.cambiarSimularError(it) }
                     )
                     Text("  Simular error")
+                }
+                // Mejora IA 2: interruptor de tiempo máximo
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(
+                        checked = tiempoMaximo,
+                        onCheckedChange = { vm.cambiarTiempoMaximo(it) }
+                    )
+                    Text("  Tiempo máximo 2 s")
                 }
                 when (val c = carga) {
                     CargaUi.Inicial -> Text("Elige cómo cargar los datos")

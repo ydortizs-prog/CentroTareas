@@ -9,6 +9,7 @@ import com.ortiz.centrotareas.model.PrimosUi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
 
@@ -112,12 +114,20 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
             _carga.value = CargaUi.Cargando
             val inicio = System.currentTimeMillis()
             try {
-                val perfil = repo.cargarPerfil()
-                val pedidos = repo.cargarPedidos(_simularError.value)
+                val (perfil, pedidos) = conTiempoMaximo {
+                    val perfil = repo.cargarPerfil()
+                    val pedidos = repo.cargarPedidos(_simularError.value)
+                    Pair(perfil, pedidos)
+                }
                 _carga.value = CargaUi.Exito(
                     "Una por una", perfil, pedidos.size, System.currentTimeMillis() - inicio
                 )
             } catch (e: Exception) {
+                // Mejora IA 2: el tiempo máximo se venció (va antes, porque también es una cancelación)
+                if (e is TimeoutCancellationException) {
+                    _carga.value = CargaUi.Error("Tardó demasiado (más de 2 s)")
+                    return@launch
+                }
                 // Paso 7: primero deja pasar la cancelación
                 if (e is CancellationException) throw e
                 _carga.value = CargaUi.Error("No se pudo cargar: " + e.message)
@@ -132,21 +142,40 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
             _carga.value = CargaUi.Cargando
             val inicio = System.currentTimeMillis()
             try {
-                val (perfil, pedidos) = coroutineScope {
-                    val a = async { repo.cargarPerfil() }
-                    val b = async { repo.cargarPedidos(_simularError.value) }
-                    Pair(a.await(), b.await())
+                val (perfil, pedidos) = conTiempoMaximo {
+                    coroutineScope {
+                        val a = async { repo.cargarPerfil() }
+                        val b = async { repo.cargarPedidos(_simularError.value) }
+                        Pair(a.await(), b.await())
+                    }
                 }
                 _carga.value = CargaUi.Exito(
                     "A la vez", perfil, pedidos.size, System.currentTimeMillis() - inicio
                 )
             } catch (e: Exception) {
+                // Mejora IA 2: el tiempo máximo se venció (va antes, porque también es una cancelación)
+                if (e is TimeoutCancellationException) {
+                    _carga.value = CargaUi.Error("Tardó demasiado (más de 2 s)")
+                    return@launch
+                }
                 // Paso 7: primero deja pasar la cancelación
                 if (e is CancellationException) throw e
                 _carga.value = CargaUi.Error("No se pudo cargar: " + e.message)
             }
         }
     }
+
+    // Mejora IA 2: interruptor de tiempo máximo (2 s) para las cargas
+    private val _tiempoMaximo = MutableStateFlow(false)
+    val tiempoMaximo: StateFlow<Boolean> = _tiempoMaximo.asStateFlow()
+
+    fun cambiarTiempoMaximo(valor: Boolean) {
+        _tiempoMaximo.value = valor
+    }
+
+    // Mejora IA 2: si el interruptor está activo, la carga se corta a los 2 s con withTimeout
+    private suspend fun <T> conTiempoMaximo(bloque: suspend () -> T): T =
+        if (_tiempoMaximo.value) withTimeout(2000) { bloque() } else bloque()
 
     // Paso 7: interruptor para que los pedidos fallen con IOException("Sin conexión")
     private val _simularError = MutableStateFlow(false)
