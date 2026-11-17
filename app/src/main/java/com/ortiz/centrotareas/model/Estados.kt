@@ -18,3 +18,12 @@ sealed interface CargaUi {
     ) : CargaUi
     data class Error(val mensaje: String) : CargaUi
 }
+
+// Mejora IA 4: tiempos acumulados de cada modo de carga, para compararlos
+data class ComparacionTiempos(
+    val unaPorUna: List<Long> = emptyList(),
+    val aLaVez: List<Long> = emptyList()
+) {
+    val promedioUnaPorUna: Long? get() = unaPorUna.takeIf { it.isNotEmpty() }?.average()?.toLong()
+    val promedioALaVez: Long? get() = aLaVez.takeIf { it.isNotEmpty() }?.average()?.toLong()
+}

@@ -49,6 +49,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ortiz.centrotareas.model.CargaUi
+import com.ortiz.centrotareas.model.ComparacionTiempos
 import com.ortiz.centrotareas.model.PrimosUi
 import com.ortiz.centrotareas.viewmodel.TareasViewModel
 
@@ -64,6 +65,7 @@ fun PantallaTareas(vm: TareasViewModel) {
     val simularError by vm.simularError.collectAsState()
     val tiempoMaximo by vm.tiempoMaximo.collectAsState()
     val intento by vm.intento.collectAsState()
+    val comparacion by vm.comparacion.collectAsState()
     // Texto del campo numérico (500 000 tardaba ~600 ms en este emulador; se ajusta para que tarde 2-5 s)
     var textoN by rememberSaveable { mutableStateOf("1500000") }
     // Contador de toques: la "prueba de vida" de la pantalla
@@ -209,6 +211,9 @@ fun PantallaTareas(vm: TareasViewModel) {
                     )
                     is CargaUi.Error -> RecuadroError(c.mensaje) { vm.reintentar() }
                 }
+
+                // Mejora IA 4: tabla para comparar los tiempos de cada modo
+                TablaComparacion(comparacion, onLimpiar = { vm.limpiarComparacion() })
             }
         }
     }
@@ -309,5 +314,50 @@ private fun BarraRayo(progreso: Float) {
                 cornerRadius = radio
             )
         }
+    }
+}
+
+// Mejora IA 4: tabla con los tiempos acumulados de cada modo y su promedio
+@Composable
+private fun TablaComparacion(datos: ComparacionTiempos, onLimpiar: () -> Unit) {
+    val filas = maxOf(datos.unaPorUna.size, datos.aLaVez.size)
+    if (filas == 0) return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            "Comparación de tiempos",
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        FilaTabla("#", "Una por una", "A la vez", negrita = true)
+        for (i in 0 until filas) {
+            FilaTabla(
+                "${i + 1}",
+                datos.unaPorUna.getOrNull(i)?.let { "$it ms" } ?: "-",
+                datos.aLaVez.getOrNull(i)?.let { "$it ms" } ?: "-"
+            )
+        }
+        FilaTabla(
+            "Prom.",
+            datos.promedioUnaPorUna?.let { "$it ms" } ?: "-",
+            datos.promedioALaVez?.let { "$it ms" } ?: "-",
+            negrita = true
+        )
+        OutlinedButton(onClick = onLimpiar) { Text("Limpiar tabla") }
+    }
+}
+
+@Composable
+private fun FilaTabla(a: String, b: String, c: String, negrita: Boolean = false) {
+    val peso = if (negrita) FontWeight.Bold else FontWeight.Normal
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(a, modifier = Modifier.weight(0.8f), fontWeight = peso)
+        Text(b, modifier = Modifier.weight(1.5f), fontWeight = peso)
+        Text(c, modifier = Modifier.weight(1.5f), fontWeight = peso)
     }
 }

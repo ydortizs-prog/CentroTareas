@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ortiz.centrotareas.data.TareasRepository
 import com.ortiz.centrotareas.model.CargaUi
+import com.ortiz.centrotareas.model.ComparacionTiempos
 import com.ortiz.centrotareas.model.PrimosUi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -119,9 +121,10 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
                     val pedidos = conReintento { repo.cargarPedidos(_simularError.value) }
                     Pair(perfil, pedidos)
                 }
-                _carga.value = CargaUi.Exito(
-                    "Una por una", perfil, pedidos.size, System.currentTimeMillis() - inicio
-                )
+                val ms = System.currentTimeMillis() - inicio
+                _carga.value = CargaUi.Exito("Una por una", perfil, pedidos.size, ms)
+                // Mejora IA 4: acumula el tiempo para la tabla de comparación
+                _comparacion.update { it.copy(unaPorUna = it.unaPorUna + ms) }
             } catch (e: Exception) {
                 // Mejora IA 2: el tiempo máximo se venció (va antes, porque también es una cancelación)
                 if (e is TimeoutCancellationException) {
@@ -149,9 +152,10 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
                         Pair(a.await(), b.await())
                     }
                 }
-                _carga.value = CargaUi.Exito(
-                    "A la vez", perfil, pedidos.size, System.currentTimeMillis() - inicio
-                )
+                val ms = System.currentTimeMillis() - inicio
+                _carga.value = CargaUi.Exito("A la vez", perfil, pedidos.size, ms)
+                // Mejora IA 4: acumula el tiempo para la tabla de comparación
+                _comparacion.update { it.copy(aLaVez = it.aLaVez + ms) }
             } catch (e: Exception) {
                 // Mejora IA 2: el tiempo máximo se venció (va antes, porque también es una cancelación)
                 if (e is TimeoutCancellationException) {
@@ -163,6 +167,14 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
                 _carga.value = CargaUi.Error("No se pudo cargar: " + e.message)
             }
         }
+    }
+
+    // Mejora IA 4: tabla que acumula los tiempos de Una por una y A la vez
+    private val _comparacion = MutableStateFlow(ComparacionTiempos())
+    val comparacion: StateFlow<ComparacionTiempos> = _comparacion.asStateFlow()
+
+    fun limpiarComparacion() {
+        _comparacion.value = ComparacionTiempos()
     }
 
     // Mejora IA 3: texto del intento actual mientras carga (null = primer intento)
