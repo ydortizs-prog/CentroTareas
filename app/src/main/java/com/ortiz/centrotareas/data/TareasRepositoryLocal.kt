@@ -1,6 +1,9 @@
 package com.ortiz.centrotareas.data
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import java.io.IOException
 
 // Cargas simuladas con delay (datos ficticios, sin internet)
@@ -17,8 +20,23 @@ class TareasRepositoryLocal : TareasRepository {
         return listOf("Pedido 101", "Pedido 102", "Pedido 103")
     }
 
-    override suspend fun contarPrimos(hasta: Int): Int {
-        // TODO Paso 5
-        return 0
+    // Paso 5: cálculo pesado en Dispatchers.Default, cancelable a mitad del ciclo
+    override suspend fun contarPrimos(hasta: Int): Int = withContext(Dispatchers.Default) {
+        var cantidad = 0
+        for (n in 2..hasta) {
+            ensureActive() // si cancelan, se detiene aquí
+            if (esPrimo(n)) cantidad++
+        }
+        cantidad
+    }
+
+    // Paso 5: prueba dividir entre 2 y la raíz de n (d * d <= n evita calcular la raíz)
+    private fun esPrimo(n: Int): Boolean {
+        var d = 2
+        while (d.toLong() * d <= n) {
+            if (n % d == 0) return false
+            d++
+        }
+        return true
     }
 }

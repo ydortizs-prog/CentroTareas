@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.ortiz.centrotareas.data.TareasRepository
 import com.ortiz.centrotareas.model.CargaUi
 import com.ortiz.centrotareas.model.PrimosUi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -68,7 +69,29 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
     // ----- Contar primos (paso 5)
     private val _primos = MutableStateFlow<PrimosUi>(PrimosUi.Inicial)
     val primos: StateFlow<PrimosUi> = _primos.asStateFlow()
-    // TODO Paso 5: fun contar(hasta: Int) y fun cancelarPrimos()
+
+    // Paso 5: Job del cálculo para poder cancelarlo
+    private var trabajoPrimos: Job? = null
+
+    fun contar(hasta: Int) {
+        if (hasta < 2 || _primos.value is PrimosUi.Calculando) return
+        trabajoPrimos = viewModelScope.launch {
+            _primos.value = PrimosUi.Calculando
+            val inicio = System.currentTimeMillis()
+            try {
+                // El trabajo pesado lo hace el Repository en segundo plano
+                val cantidad = repo.contarPrimos(hasta)
+                _primos.value = PrimosUi.Listo(cantidad, System.currentTimeMillis() - inicio)
+            } catch (e: CancellationException) {
+                _primos.value = PrimosUi.Cancelado
+                throw e // se vuelve a lanzar para no romper la cancelación
+            }
+        }
+    }
+
+    fun cancelarPrimos() {
+        trabajoPrimos?.cancel()
+    }
 
     // ----- Dos cargas (pasos 6 y 7)
     private val _carga = MutableStateFlow<CargaUi>(CargaUi.Inicial)
