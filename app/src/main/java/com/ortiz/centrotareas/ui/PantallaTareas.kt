@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ortiz.centrotareas.model.CargaUi
 import com.ortiz.centrotareas.model.PrimosUi
 import com.ortiz.centrotareas.viewmodel.TareasViewModel
 
@@ -45,6 +47,7 @@ fun PantallaTareas(vm: TareasViewModel) {
     val progreso by vm.progreso.collectAsState()
     val corriendo by vm.corriendo.collectAsState()
     val primos by vm.primos.collectAsState()
+    val carga by vm.carga.collectAsState()
     // Texto del campo numérico (por defecto 500 000; ajústalo para que tarde 2-5 s)
     var textoN by rememberSaveable { mutableStateOf("500000") }
     // Contador de toques: la "prueba de vida" de la pantalla
@@ -141,9 +144,31 @@ fun PantallaTareas(vm: TareasViewModel) {
             }
 
             Tarjeta("Dos cargas") {
-                // TODO Paso 6: botones Una por una / A la vez y resultado
+                // Paso 6: botones deshabilitados mientras carga (no se lanza una segunda carga)
+                val cargando = carga is CargaUi.Cargando
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { vm.cargarUnaPorUna() },
+                        enabled = !cargando
+                    ) {
+                        Text("Una por una")
+                    }
+                    Button(
+                        onClick = { vm.cargarALaVez() },
+                        enabled = !cargando
+                    ) {
+                        Text("A la vez")
+                    }
+                }
                 // TODO Paso 7: interruptor Simular error y Reintentar
-                Text("Pendiente")
+                when (val c = carga) {
+                    CargaUi.Inicial -> Text("Elige cómo cargar los datos")
+                    CargaUi.Cargando -> CircularProgressIndicator()
+                    is CargaUi.Exito -> RecuadroVerde(
+                        "Modo: ${c.modo}\nPerfil: ${c.perfil}\nPedidos: ${c.pedidos}\nTiempo: ${c.milisegundos} ms"
+                    )
+                    is CargaUi.Error -> Text(c.mensaje) // Paso 7: recuadro de error
+                }
             }
         }
     }
