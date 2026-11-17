@@ -116,7 +116,7 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
             try {
                 val (perfil, pedidos) = conTiempoMaximo {
                     val perfil = repo.cargarPerfil()
-                    val pedidos = repo.cargarPedidos(_simularError.value)
+                    val pedidos = conReintento { repo.cargarPedidos(_simularError.value) }
                     Pair(perfil, pedidos)
                 }
                 _carga.value = CargaUi.Exito(
@@ -145,7 +145,7 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
                 val (perfil, pedidos) = conTiempoMaximo {
                     coroutineScope {
                         val a = async { repo.cargarPerfil() }
-                        val b = async { repo.cargarPedidos(_simularError.value) }
+                        val b = async { conReintento { repo.cargarPedidos(_simularError.value) } }
                         Pair(a.await(), b.await())
                     }
                 }
@@ -163,6 +163,33 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
                 _carga.value = CargaUi.Error("No se pudo cargar: " + e.message)
             }
         }
+    }
+
+    // Mejora IA 3: texto del intento actual mientras carga (null = primer intento)
+    private val _intento = MutableStateFlow<String?>(null)
+    val intento: StateFlow<String?> = _intento.asStateFlow()
+
+    // Mejora IA 3: reintenta hasta 3 veces con espera creciente (500 ms, 1000 ms) antes del error
+    private suspend fun <T> conReintento(bloque: suspend () -> T): T {
+        val maxIntentos = 3
+        for (n in 1..maxIntentos) {
+            try {
+                _intento.value = if (n == 1) null else "Reintentando ($n de $maxIntentos)..."
+                return bloque().also { _intento.value = null }
+            } catch (e: Exception) {
+                // La cancelación (y el tiempo máximo) nunca se reintenta: se relanza
+                if (e is CancellationException) {
+                    _intento.value = null
+                    throw e
+                }
+                if (n == maxIntentos) {
+                    _intento.value = null
+                    throw e
+                }
+                delay(500L * n) // espera creciente
+            }
+        }
+        error("No debería llegar aquí")
     }
 
     // Mejora IA 2: interruptor de tiempo máximo (2 s) para las cargas

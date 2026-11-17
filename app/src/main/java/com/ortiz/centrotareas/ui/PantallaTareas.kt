@@ -63,6 +63,7 @@ fun PantallaTareas(vm: TareasViewModel) {
     val carga by vm.carga.collectAsState()
     val simularError by vm.simularError.collectAsState()
     val tiempoMaximo by vm.tiempoMaximo.collectAsState()
+    val intento by vm.intento.collectAsState()
     // Texto del campo numérico (500 000 tardaba ~600 ms en este emulador; se ajusta para que tarde 2-5 s)
     var textoN by rememberSaveable { mutableStateOf("1500000") }
     // Contador de toques: la "prueba de vida" de la pantalla
@@ -195,7 +196,14 @@ fun PantallaTareas(vm: TareasViewModel) {
                 }
                 when (val c = carga) {
                     CargaUi.Inicial -> Text("Elige cómo cargar los datos")
-                    CargaUi.Cargando -> CircularProgressIndicator()
+                    CargaUi.Cargando -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator()
+                        // Mejora IA 3: avisa en qué intento va
+                        intento?.let { Text(it, color = MaterialTheme.colorScheme.secondary) }
+                    }
                     is CargaUi.Exito -> RecuadroVerde(
                         "Modo: ${c.modo}\nPerfil: ${c.perfil}\nPedidos: ${c.pedidos}\nTiempo: ${c.milisegundos} ms"
                     )
