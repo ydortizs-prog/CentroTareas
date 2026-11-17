@@ -1,6 +1,7 @@
 package com.ortiz.centrotareas.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -33,6 +35,7 @@ import com.ortiz.centrotareas.viewmodel.TareasViewModel
 fun PantallaTareas(vm: TareasViewModel) {
     val mensaje by vm.mensaje.collectAsState()
     val progreso by vm.progreso.collectAsState()
+    val corriendo by vm.corriendo.collectAsState()
     // Contador de toques: la "prueba de vida" de la pantalla
     var toques by rememberSaveable { mutableIntStateOf(0) }
 
@@ -65,8 +68,20 @@ fun PantallaTareas(vm: TareasViewModel) {
 
             Tarjeta("Tarea con progreso") {
                 // Paso 2 y 3: la tarea larga ya no bloquea el hilo principal
-                Button(onClick = { vm.tareaLarga() }) {
-                    Text("Iniciar")
+                // Paso 4: Iniciar deshabilitado mientras corre; Cancelar solo mientras corre
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { vm.tareaLarga() },
+                        enabled = !corriendo
+                    ) {
+                        Text("Iniciar")
+                    }
+                    OutlinedButton(
+                        onClick = { vm.cancelar() },
+                        enabled = corriendo
+                    ) {
+                        Text("Cancelar")
+                    }
                 }
                 // Paso 3: barra de progreso y porcentaje debajo
                 LinearProgressIndicator(
@@ -74,7 +89,6 @@ fun PantallaTareas(vm: TareasViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text("${(progreso * 100).toInt()} %")
-                // TODO Paso 4: botones Iniciar / Cancelar
                 Text(mensaje)
             }
 
