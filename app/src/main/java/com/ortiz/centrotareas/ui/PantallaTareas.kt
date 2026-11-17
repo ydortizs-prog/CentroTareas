@@ -52,8 +52,8 @@ fun PantallaTareas(vm: TareasViewModel) {
     val primos by vm.primos.collectAsState()
     val carga by vm.carga.collectAsState()
     val simularError by vm.simularError.collectAsState()
-    // Texto del campo numérico (por defecto 500 000; ajústalo para que tarde 2-5 s)
-    var textoN by rememberSaveable { mutableStateOf("500000") }
+    // Texto del campo numérico (500 000 tardaba ~600 ms en este emulador; se ajusta para que tarde 2-5 s)
+    var textoN by rememberSaveable { mutableStateOf("1500000") }
     // Contador de toques: la "prueba de vida" de la pantalla
     var toques by rememberSaveable { mutableIntStateOf(0) }
 
