@@ -62,9 +62,9 @@ fun PantallaTareas(vm: TareasViewModel) {
             }
 
             Tarjeta("Tarea con progreso") {
-                // Paso 1: llama a la tarea que bloquea el hilo principal
-                Button(onClick = { vm.tareaLargaMala() }) {
-                    Text("Tarea larga (MAL)")
+                // Paso 2: la tarea larga ya no bloquea el hilo principal
+                Button(onClick = { vm.tareaLarga() }) {
+                    Text("Tarea larga")
                 }
                 // TODO Paso 3: LinearProgressIndicator y porcentaje
                 // TODO Paso 4: botones Iniciar / Cancelar
