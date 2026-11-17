@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -31,6 +32,7 @@ import com.ortiz.centrotareas.viewmodel.TareasViewModel
 @Composable
 fun PantallaTareas(vm: TareasViewModel) {
     val mensaje by vm.mensaje.collectAsState()
+    val progreso by vm.progreso.collectAsState()
     // Contador de toques: la "prueba de vida" de la pantalla
     var toques by rememberSaveable { mutableIntStateOf(0) }
 
@@ -62,11 +64,16 @@ fun PantallaTareas(vm: TareasViewModel) {
             }
 
             Tarjeta("Tarea con progreso") {
-                // Paso 2: la tarea larga ya no bloquea el hilo principal
+                // Paso 2 y 3: la tarea larga ya no bloquea el hilo principal
                 Button(onClick = { vm.tareaLarga() }) {
-                    Text("Tarea larga")
+                    Text("Iniciar")
                 }
-                // TODO Paso 3: LinearProgressIndicator y porcentaje
+                // Paso 3: barra de progreso y porcentaje debajo
+                LinearProgressIndicator(
+                    progress = { progreso },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text("${(progreso * 100).toInt()} %")
                 // TODO Paso 4: botones Iniciar / Cancelar
                 Text(mensaje)
             }
