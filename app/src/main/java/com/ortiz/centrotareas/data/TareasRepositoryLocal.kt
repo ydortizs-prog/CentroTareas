@@ -21,14 +21,20 @@ class TareasRepositoryLocal : TareasRepository {
     }
 
     // Paso 5: cálculo pesado en Dispatchers.Default, cancelable a mitad del ciclo
-    override suspend fun contarPrimos(hasta: Int): Int = withContext(Dispatchers.Default) {
-        var cantidad = 0
-        for (n in 2..hasta) {
-            ensureActive() // si cancelan, se detiene aquí
-            if (esPrimo(n)) cantidad++
+    // Mejora IA 1: avisa el progreso cada 1 % para no saturar la pantalla
+    override suspend fun contarPrimos(hasta: Int, alAvanzar: (Float) -> Unit): Int =
+        withContext(Dispatchers.Default) {
+            var cantidad = 0
+            val paso = maxOf(1, hasta / 100)
+            alAvanzar(0f)
+            for (n in 2..hasta) {
+                ensureActive() // si cancelan, se detiene aquí
+                if (esPrimo(n)) cantidad++
+                if (n % paso == 0) alAvanzar(n.toFloat() / hasta)
+            }
+            alAvanzar(1f)
+            cantidad
         }
-        cantidad
-    }
 
     // Paso 5: prueba dividir entre 2 y la raíz de n (d * d <= n evita calcular la raíz)
     private fun esPrimo(n: Int): Boolean {

@@ -1,5 +1,11 @@
 package com.ortiz.centrotareas.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -7,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,7 +24,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +41,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +59,7 @@ fun PantallaTareas(vm: TareasViewModel) {
     val progreso by vm.progreso.collectAsState()
     val corriendo by vm.corriendo.collectAsState()
     val primos by vm.primos.collectAsState()
+    val progresoPrimos by vm.progresoPrimos.collectAsState()
     val carga by vm.carga.collectAsState()
     val simularError by vm.simularError.collectAsState()
     // Texto del campo numérico (500 000 tardaba ~600 ms en este emulador; se ajusta para que tarde 2-5 s)
@@ -102,10 +112,8 @@ fun PantallaTareas(vm: TareasViewModel) {
                     }
                 }
                 // Paso 3: barra de progreso y porcentaje debajo
-                LinearProgressIndicator(
-                    progress = { progreso },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Mejora IA 1: misma barra "tipo trueno" para la tarea con progreso
+                BarraRayo(progreso = progreso)
                 Text("${(progreso * 100).toInt()} %")
                 Text(mensaje)
             }
@@ -139,7 +147,11 @@ fun PantallaTareas(vm: TareasViewModel) {
                 }
                 when (val p = primos) {
                     PrimosUi.Inicial -> Text("Escribe un número y pulsa Contar")
-                    PrimosUi.Calculando -> Text("Calculando...")
+                    PrimosUi.Calculando -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        // Mejora IA 1: barra "tipo trueno" con el avance del cálculo
+                        BarraRayo(progreso = progresoPrimos)
+                        Text("⚡ Calculando... ${(progresoPrimos * 100).toInt()} %")
+                    }
                     is PrimosUi.Listo -> RecuadroVerde(
                         "Primos encontrados: ${p.cantidad}\nTiempo: ${p.milisegundos} ms"
                     )
@@ -236,6 +248,49 @@ private fun RecuadroError(mensaje: String, onReintentar: () -> Unit) {
             )
         ) {
             Text("Reintentar")
+        }
+    }
+}
+
+// Mejora IA 1: barra de progreso "tipo trueno": degradado amarillo-naranja con un brillo que recorre la barra
+@Composable
+private fun BarraRayo(progreso: Float) {
+    val brillo = rememberInfiniteTransition(label = "rayo")
+    val desplazamiento by brillo.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(durationMillis = 900, easing = LinearEasing)),
+        label = "brillo"
+    )
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(12.dp)
+    ) {
+        val radio = CornerRadius(size.height / 2, size.height / 2)
+        // Fondo de la barra
+        drawRoundRect(color = Color(0xFF263238), cornerRadius = radio)
+        val ancho = size.width * progreso.coerceIn(0f, 1f)
+        if (ancho > 0f) {
+            // Relleno eléctrico: amarillo -> naranja -> amarillo
+            drawRoundRect(
+                brush = Brush.horizontalGradient(
+                    listOf(Color(0xFFFFEB3B), Color(0xFFFF9800), Color(0xFFFFD600))
+                ),
+                size = Size(ancho, size.height),
+                cornerRadius = radio
+            )
+            // Destello blanco que corre sobre la parte llena
+            val x = ancho * desplazamiento
+            drawRoundRect(
+                brush = Brush.horizontalGradient(
+                    listOf(Color.Transparent, Color.White.copy(alpha = 0.8f), Color.Transparent),
+                    startX = x - 40f,
+                    endX = x + 40f
+                ),
+                size = Size(ancho, size.height),
+                cornerRadius = radio
+            )
         }
     }
 }
